@@ -20,7 +20,8 @@
     --gutter:88px;
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  html{scroll-behavior:smooth}
+  html{scroll-behavior:smooth; -webkit-text-size-adjust:100%; text-size-adjust:100%}
+  img,svg{max-width:100%}
   body{
     font-family:var(--sans); color:var(--plum); background-color:var(--white);
     background-image:radial-gradient(var(--plum-dot) 1px,transparent 1.2px);
@@ -53,7 +54,7 @@
 
   /* ---------- commit log ---------- */
   .log{padding:clamp(40px,7vh,72px) 0 clamp(60px,10vh,120px)}
-  .commit{display:grid; grid-template-columns:var(--gutter) 1fr; column-gap:clamp(8px,2vw,28px); position:relative}
+  .commit{display:grid; grid-template-columns:var(--gutter) minmax(0,1fr); column-gap:clamp(8px,2vw,28px); position:relative}
   .gutter{position:relative}
   .gutter::before,.gutter::after{content:""; position:absolute; left:50%; top:0; bottom:0; width:2px; transform:translateX(-50%)}
   .gutter::before{background:var(--plum-rule)}
@@ -73,7 +74,7 @@
   .merge .node svg{width:16px; height:16px}
   .commit.merge.in .node{background:var(--lime); box-shadow:0 0 0 9px var(--lime-tint); color:var(--plum); transform:translateX(-50%) scale(1.05)}
 
-  .body{padding:clamp(18px,3vh,28px) 0 clamp(52px,9vh,110px)}
+  .body{min-width:0; padding:clamp(18px,3vh,28px) 0 clamp(52px,9vh,110px)}
   .meta{display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; font-family:var(--mono); font-size:12.5px; color:var(--plum-3); letter-spacing:.02em}
   .meta .hash{color:var(--plum); font-weight:600}
   .meta .tag{border:1px solid var(--plum-rule); background:var(--plum-tint); border-radius:6px; padding:2px 8px; color:var(--plum-2)}
@@ -88,7 +89,7 @@
 
   /* diff + status blocks (semantic, but tinted to brand) */
   .diff{margin-top:clamp(20px,3vh,30px); background:var(--white); border:1.5px solid var(--plum-rule); border-radius:12px;
-    padding:12px 0; overflow:auto; font-family:var(--mono); font-size:clamp(12.5px,1.15vw,14.5px); line-height:1.75; max-width:720px}
+    padding:12px 0; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:thin; font-family:var(--mono); font-size:clamp(12.5px,1.15vw,14.5px); line-height:1.75; max-width:720px}
   .diff .l{display:block; padding:0 18px; white-space:pre}
   .diff .h{color:var(--plum-3)}
   .diff .c{color:var(--plum-2)}
@@ -105,16 +106,20 @@
   .focus .rowf{display:grid; grid-template-columns:64px 1fr; align-items:center; gap:12px}
   .focus .lbl{color:var(--plum-3); font-weight:600; text-transform:uppercase; letter-spacing:.06em; font-size:11px}
   .focus .bar{display:flex; height:32px; border-radius:8px; overflow:hidden; border:1.5px solid var(--plum-rule); background:var(--white)}
-  .focus .seg{display:flex; align-items:center; padding:0 10px; white-space:nowrap; overflow:hidden; font-weight:600; color:var(--plum); transition:width 1s var(--ease) .5s}
+  .focus .seg{display:flex; align-items:center; min-width:0; padding:0 10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600; color:var(--plum); transition:width 1s var(--ease) .5s}
   .focus .seg.write{background:var(--plum-tint)}
   .focus .seg.review{background:var(--lime)}
   .focus .seg.fb{background:var(--lime-tint)}
   .focus .note{color:var(--plum-3); font-size:11.5px}
+  .focus .key{display:none; flex-wrap:wrap; gap:8px 16px; color:var(--plum-2); font-size:11.5px}
+  .focus .key span{display:inline-flex; align-items:center; gap:6px}
+  .focus .key i{width:12px; height:12px; border-radius:3px; border:1px solid var(--plum-rule); display:inline-block}
+  .focus .key i.write{background:var(--plum-tint)} .focus .key i.review{background:var(--lime)} .focus .key i.fb{background:var(--lime-tint)}
   .merge .meta{display:flex}
 
   /* merge finale (plum panel, lime type) */
   .merge .body{padding-bottom:clamp(30px,5vh,56px)}
-  .merge .panel{background:var(--plum); color:var(--white); border-radius:18px; padding:clamp(24px,3.5vw,48px)}
+  .merge .panel{min-width:0; background:var(--plum); color:var(--white); border-radius:18px; padding:clamp(24px,3.5vw,48px)}
   .merge .meta{color:rgba(255,255,255,.62)}
   .merge .meta .hash{color:var(--lime)}
   .merge .meta .tag{background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.18); color:rgba(255,255,255,.85)}
@@ -148,12 +153,56 @@
   footer .end{color:var(--plum-2)} footer .dollar{color:var(--plum); font-weight:600; margin-right:8px}
   footer .cursor{background:var(--plum)}
 
+  /* ---------- responsive ---------- */
+  @media (max-width:900px){
+    :root{--gutter:64px}
+    h2{max-width:none}
+  }
   @media (max-width:720px){
     :root{--gutter:44px}
     h1{max-width:none}
+    .hero{padding-top:clamp(44px,8vh,72px)}
+    .commit{column-gap:10px}
+    .body{padding-bottom:clamp(40px,7vh,72px)}
     .node{width:16px; height:16px; top:28px}
     .merge .node{width:24px; height:24px; top:24px}
     .merge .node svg{width:13px; height:13px}
+    .diff{border-radius:10px; font-size:12.5px; line-height:1.65}
+    .diff .l{padding:0 14px}
+    .merge .panel{border-radius:14px}
+  }
+  @media (max-width:560px){
+    :root{--gutter:28px}
+    .wrap{padding:0 16px}
+    .commit{column-gap:8px}
+    .commit:first-child .gutter::before,.commit:first-child .gutter::after{top:32px}
+    .node{width:14px; height:14px; top:26px; border-width:2px}
+    .commit.in .node{box-shadow:0 0 0 5px var(--lime-tint)}
+    .merge .node{width:22px; height:22px; top:22px}
+    .commit.merge.in .node{box-shadow:0 0 0 6px var(--lime-tint)}
+    .commit.merge .gutter::before,.commit.merge .gutter::after{height:32px}
+    .legend{gap:12px 18px; font-size:12px}
+    .meta{gap:8px 10px; font-size:12px}
+    h2{font-size:clamp(26px,7.4vw,34px)}
+    .commit p{font-size:15.5px}
+    .diff{font-size:12px}
+    .diff .l{padding:0 12px}
+    .badge{font-size:12px; padding:5px 12px}
+    /* focus bars: label above bar, hide in-bar text, show legend */
+    .focus .rowf{grid-template-columns:1fr; gap:6px}
+    .focus .rowf > span:empty{display:none}
+    .focus .bar{height:26px; border-radius:6px}
+    .focus .seg{font-size:0; padding:0}
+    .focus .key{display:flex}
+    .merge .panel{padding:20px 18px; border-radius:12px}
+    .finale{font-size:clamp(34px,11vw,52px); letter-spacing:-.03em}
+    footer{font-size:12px}
+  }
+  @media (max-width:380px){
+    h1{font-size:40px}
+    .prompt{font-size:13px}
+    .intro{font-size:14.5px}
+    .finale{font-size:32px}
   }
   @media (prefers-reduced-motion:reduce){
     html{scroll-behavior:auto}
@@ -257,6 +306,7 @@
           <div class="rowf"><span class="lbl">after</span>
             <div class="bar"><span class="seg review" style="width:44%">reviewing plans</span><span class="seg fb" style="width:40%">feedback on results</span><span class="seg write" style="width:16%">code</span></div>
           </div>
+          <div class="key"><span><i class="write"></i>writing code</span><span><i class="review"></i>reviewing plans</span><span><i class="fb"></i>feedback on results</span></div>
           <div class="rowf"><span></span><span class="note">where my time goes &mdash; illustrative, not measured</span></div>
         </div>
       </div>
