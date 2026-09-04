@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADLC — a commit history of how we learned</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Hubexo brand */
+    --plum:#321432; --plum-2:#4A2A4A; --plum-3:#8C7A8C;
+    --plum-tint:#F6F2F6; --plum-rule:#E6DCE6; --plum-dot:rgba(50,20,50,.10);
+    --lime:#DCFF3C; --lime-tint:rgba(220,255,60,.32); --lime-deep:#B8DB1F;
+    --white:#FFFFFF;
+    --sans:"Manrope",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+    --ease:cubic-bezier(.22,.61,.36,1);
+    --gutter:88px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--sans); color:var(--plum); background-color:var(--white);
+    background-image:radial-gradient(var(--plum-dot) 1px,transparent 1.2px);
+    background-size:28px 28px; -webkit-font-smoothing:antialiased; line-height:1.6;
+  }
+  .wrap{max-width:1040px; margin:0 auto; padding:0 clamp(18px,4vw,48px)}
+  .mono{font-family:var(--mono)}
+
+  /* ---------- hero (plum panel) ---------- */
+  .hero-band{background:var(--plum); color:var(--white)}
+  .hero{padding:clamp(56px,10vh,120px) 0 clamp(44px,7vh,80px)}
+  .repo{font-family:var(--mono); font-size:13px; color:rgba(255,255,255,.62); letter-spacing:.02em}
+  .repo b{color:rgba(255,255,255,.9); font-weight:500}
+  .repo .branch{color:var(--lime); font-weight:600}
+  .prompt{font-family:var(--mono); margin-top:10px; font-size:clamp(14px,1.4vw,17px); color:rgba(255,255,255,.85)}
+  .prompt .dollar{color:var(--lime); font-weight:600; margin-right:8px}
+  .cursor{display:inline-block; width:.6em; height:1.1em; background:var(--lime); vertical-align:text-bottom; margin-left:2px; animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  h1{
+    font-family:var(--sans); font-weight:800; line-height:.98; letter-spacing:-.03em;
+    font-size:clamp(46px,8.6vw,112px); margin-top:clamp(26px,4vh,44px); color:var(--white); max-width:14ch;
+  }
+  h1 em{font-style:normal; color:var(--lime)}
+  .intro{margin-top:clamp(20px,3vh,32px); max-width:60ch; font-size:clamp(15px,1.35vw,18.5px); color:rgba(255,255,255,.78); font-weight:500}
+  .legend{margin-top:clamp(28px,4vh,48px); display:flex; flex-wrap:wrap; gap:18px 28px; font-family:var(--mono); font-size:12.5px; color:rgba(255,255,255,.62)}
+  .legend span{display:inline-flex; align-items:center; gap:8px}
+  .legend i{width:12px; height:12px; border-radius:50%; border:2px solid rgba(255,255,255,.55); display:inline-block}
+  .legend i.f{background:var(--lime); border-color:var(--lime)}
+  .legend i.m{background:var(--lime); border-color:var(--lime); box-shadow:0 0 0 3px rgba(220,255,60,.28)}
+
+  /* ---------- commit log ---------- */
+  .log{padding:clamp(40px,7vh,72px) 0 clamp(60px,10vh,120px)}
+  .commit{display:grid; grid-template-columns:var(--gutter) 1fr; column-gap:clamp(8px,2vw,28px); position:relative}
+  .gutter{position:relative}
+  .gutter::before,.gutter::after{content:""; position:absolute; left:50%; top:0; bottom:0; width:2px; transform:translateX(-50%)}
+  .gutter::before{background:var(--plum-rule)}
+  .gutter::after{background:var(--plum); transform:translateX(-50%) scaleY(0); transform-origin:top; transition:transform 1s var(--ease)}
+  .commit.in .gutter::after{transform:translateX(-50%) scaleY(1)}
+  .commit:first-child .gutter::before,.commit:first-child .gutter::after{top:36px}
+  .commit.merge .gutter::before,.commit.merge .gutter::after{bottom:auto; height:36px}
+
+  /* nodes = atoms */
+  .node{
+    position:absolute; left:50%; top:26px; width:20px; height:20px; border-radius:50%;
+    transform:translateX(-50%); border:2.5px solid var(--plum); background:var(--white); z-index:2;
+    transition:background .35s var(--ease) .55s, box-shadow .45s var(--ease) .55s, transform .35s var(--ease) .55s;
+  }
+  .commit.in .node{background:var(--lime); box-shadow:0 0 0 7px var(--lime-tint); transform:translateX(-50%) scale(1.08)}
+  .merge .node{width:30px; height:30px; top:20px; display:grid; place-items:center; color:transparent}
+  .merge .node svg{width:16px; height:16px}
+  .commit.merge.in .node{background:var(--lime); box-shadow:0 0 0 9px var(--lime-tint); color:var(--plum); transform:translateX(-50%) scale(1.05)}
+
+  .body{padding:clamp(18px,3vh,28px) 0 clamp(52px,9vh,110px)}
+  .meta{display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; font-family:var(--mono); font-size:12.5px; color:var(--plum-3); letter-spacing:.02em}
+  .meta .hash{color:var(--plum); font-weight:600}
+  .meta .tag{border:1px solid var(--plum-rule); background:var(--plum-tint); border-radius:6px; padding:2px 8px; color:var(--plum-2)}
+  .meta .type{color:var(--plum-2); font-weight:500}
+  h2{
+    font-family:var(--sans); font-weight:800; letter-spacing:-.025em; line-height:1.04;
+    font-size:clamp(28px,4.4vw,56px); margin-top:14px; color:var(--plum); max-width:20ch;
+  }
+  .commit p{margin-top:clamp(14px,2vh,20px); max-width:62ch; font-size:clamp(15px,1.3vw,18px); color:var(--plum-2); font-weight:500}
+  /* lime marker highlight — the brand's signature move */
+  .commit p strong{color:var(--plum); font-weight:800; background:linear-gradient(transparent 58%, var(--lime) 58%); padding:0 .08em}
+
+  /* diff + status blocks (semantic, but tinted to brand) */
+  .diff{margin-top:clamp(20px,3vh,30px); background:var(--white); border:1.5px solid var(--plum-rule); border-radius:12px;
+    padding:12px 0; overflow:auto; font-family:var(--mono); font-size:clamp(12.5px,1.15vw,14.5px); line-height:1.75; max-width:720px}
+  .diff .l{display:block; padding:0 18px; white-space:pre}
+  .diff .h{color:var(--plum-3)}
+  .diff .c{color:var(--plum-2)}
+  .diff .a{background:var(--lime-tint); color:var(--plum)}
+  .diff .r{background:var(--plum-tint); color:var(--plum-3); text-decoration:line-through; text-decoration-color:rgba(50,20,50,.45)}
+  .diff .cm{color:var(--plum-3)}
+  .diff .k{color:var(--plum); font-weight:600}
+  .badges{margin-top:18px; display:flex; flex-wrap:wrap; gap:10px}
+  .badge{font-family:var(--mono); font-size:12.5px; font-weight:600; color:var(--plum); background:var(--lime); border-radius:999px; padding:6px 14px}
+
+
+  /* focus shift bars (illustrative) */
+  .focus{margin-top:clamp(18px,2.6vh,26px); max-width:720px; display:grid; gap:12px; font-family:var(--mono); font-size:12.5px}
+  .focus .rowf{display:grid; grid-template-columns:64px 1fr; align-items:center; gap:12px}
+  .focus .lbl{color:var(--plum-3); font-weight:600; text-transform:uppercase; letter-spacing:.06em; font-size:11px}
+  .focus .bar{display:flex; height:32px; border-radius:8px; overflow:hidden; border:1.5px solid var(--plum-rule); background:var(--white)}
+  .focus .seg{display:flex; align-items:center; padding:0 10px; white-space:nowrap; overflow:hidden; font-weight:600; color:var(--plum); transition:width 1s var(--ease) .5s}
+  .focus .seg.write{background:var(--plum-tint)}
+  .focus .seg.review{background:var(--lime)}
+  .focus .seg.fb{background:var(--lime-tint)}
+  .focus .note{color:var(--plum-3); font-size:11.5px}
+  .merge .meta{display:flex}
+
+  /* merge finale (plum panel, lime type) */
+  .merge .body{padding-bottom:clamp(30px,5vh,56px)}
+  .merge .panel{background:var(--plum); color:var(--white); border-radius:18px; padding:clamp(24px,3.5vw,48px)}
+  .merge .meta{color:rgba(255,255,255,.62)}
+  .merge .meta .hash{color:var(--lime)}
+  .merge .meta .tag{background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.18); color:rgba(255,255,255,.85)}
+  .merge .meta .type{color:rgba(255,255,255,.85)}
+  .merge h2{color:var(--white)}
+  .merge p{color:rgba(255,255,255,.8)}
+  .merge p strong{color:var(--plum); background:linear-gradient(transparent 58%, var(--lime) 58%); background:var(--lime); padding:0 .18em; border-radius:4px}
+  .finale{margin-top:clamp(28px,5vh,48px); font-family:var(--sans); font-weight:800; letter-spacing:-.035em; line-height:.95;
+    font-size:clamp(44px,9vw,120px); color:var(--lime); position:relative; display:inline-block}
+  .finale::after{content:""; position:absolute; left:0; right:0; bottom:-.06em; height:.12em; background:var(--lime);
+    transform:scaleX(0); transform-origin:left; transition:transform .9s var(--ease) .9s; opacity:.55}
+  .commit.in .finale::after{transform:scaleX(1)}
+
+  /* reveal */
+  .body > *{opacity:0; transform:translateY(18px); transition:opacity .65s var(--ease), transform .65s var(--ease)}
+  .commit.in .body > *{opacity:1; transform:none}
+  .commit.in .body > *:nth-child(1){transition-delay:.15s}
+  .commit.in .body > *:nth-child(2){transition-delay:.25s}
+  .commit.in .body > *:nth-child(3){transition-delay:.35s}
+  .commit.in .body > *:nth-child(4){transition-delay:.45s}
+  .commit.in .body > *:nth-child(5){transition-delay:.55s}
+  .merge .panel > *{opacity:0; transform:translateY(18px); transition:opacity .65s var(--ease), transform .65s var(--ease)}
+  .commit.in .panel > *{opacity:1; transform:none}
+  .commit.in .panel > *:nth-child(1){transition-delay:.2s}
+  .commit.in .panel > *:nth-child(2){transition-delay:.3s}
+  .commit.in .panel > *:nth-child(3){transition-delay:.4s}
+  .commit.in .panel > *:nth-child(4){transition-delay:.55s}
+
+  /* footer */
+  footer{padding:clamp(28px,5vh,56px) 0 clamp(48px,8vh,96px); border-top:1.5px solid var(--plum-rule); color:var(--plum-3); font-family:var(--mono); font-size:13px}
+  footer .end{color:var(--plum-2)} footer .dollar{color:var(--plum); font-weight:600; margin-right:8px}
+  footer .cursor{background:var(--plum)}
+
+  @media (max-width:720px){
+    :root{--gutter:44px}
+    h1{max-width:none}
+    .node{width:16px; height:16px; top:28px}
+    .merge .node{width:24px; height:24px; top:24px}
+    .merge .node svg{width:13px; height:13px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .gutter::after{transform:translateX(-50%) scaleY(1) !important; transition:none !important}
+    .node,.body > *,.panel > *,.finale::after{transition:none !important}
+    .body > *,.panel > *{opacity:1 !important; transform:none !important}
+    .commit .node{background:var(--lime)} .commit.merge .node{background:var(--lime); color:var(--plum)}
+    .finale::after{transform:scaleX(1) !important}
+    .cursor{animation:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="hero-band">
+  <div class="wrap">
+    <header class="hero">
+      <div class="repo"><b>~/adlc-journey</b> <span class="branch">(main)</span></div>
+      <div class="prompt"><span class="dollar">$</span><span id="cmd"></span><span class="cursor" id="cur"></span></div>
+      <h1>A commit history of <em>how we learned.</em></h1>
+      <p class="intro">One of the achievements we're most proud of is how the ADLC process gradually became part of our daily engineering workflow. Here's that journey — one commit at a time.</p>
+      <div class="legend">
+        <span><i></i> not yet reached</span>
+        <span><i class="f"></i> commit</span>
+        <span><i class="m"></i> merged into main</span>
+      </div>
+    </header>
+  </div>
+</div>
+
+<div class="wrap">
+  <main class="log" id="log">
+
+    <!-- 01 -->
+    <article class="commit">
+      <div class="gutter"><span class="node"></span></div>
+      <div class="body">
+        <div class="meta"><span class="hash">a1f3c9e</span><span class="tag">phase/01</span><span class="type">init</span></div>
+        <h2>We started from zero.</h2>
+        <p>When we began, most of us had <strong>little to no experience</strong> with agentic development. So we went back to fundamentals: simple agents that ran locally, driven by nothing more than <strong>well-written Markdown instructions</strong>.</p>
+        <div class="diff">
+<span class="l h">--- a/how-we-worked</span><span class="l h">+++ b/how-we-worked</span><span class="l c">  <span class="k">experience:</span>   agentic development</span><span class="l r">- <span class="k">level:</span>        little to none</span><span class="l a">+ <span class="k">first_agent:</span>  runs locally</span><span class="l a">+ <span class="k">instructions:</span> AGENT.md   <span class="cm"># plain Markdown, written well</span></span>
+        </div>
+      </div>
+    </article>
+
+    <!-- 02 -->
+    <article class="commit">
+      <div class="gutter"><span class="node"></span></div>
+      <div class="body">
+        <div class="meta"><span class="hash">7b2d40c</span><span class="tag">phase/02</span><span class="type">feat: split deterministic from non-deterministic</span></div>
+        <h2>We drew a line between what's deterministic and what isn't.</h2>
+        <p>As our understanding matured, we learned to distinguish deterministic workflows from non-deterministic ones — and we <strong>designed the architecture around that line</strong>.</p>
+        <div class="diff">
+<span class="l h">--- a/architecture</span><span class="l h">+++ b/architecture</span><span class="l r">- everything routed through the model</span><span class="l a">+ <span class="k">deterministic:</span>      guardrails, gates, repeatable steps</span><span class="l a">+ <span class="k">non_deterministic:</span>  reasoning, judgment, creativity</span><span class="l a">+ <span class="k">rule:</span>               keep the two apart</span>
+        </div>
+      </div>
+    </article>
+
+    <!-- 03 -->
+    <article class="commit">
+      <div class="gutter"><span class="node"></span></div>
+      <div class="body">
+        <div class="meta"><span class="hash">c93e1af</span><span class="tag">phase/03</span><span class="type">refactor: distribute work via plugins</span></div>
+        <h2>We changed how we work together.</h2>
+        <p>Our tooling matured, and so did our collaboration. We shifted how work is distributed across the team by leveraging <strong>Claude plugins</strong> — which let us build and iterate far more efficiently.</p>
+        <div class="diff">
+<span class="l h">--- a/team-workflow</span><span class="l h">+++ b/team-workflow</span><span class="l r">- <span class="k">distribution:</span> ad hoc</span><span class="l a">+ <span class="k">distribution:</span> Claude plugins     <span class="cm"># reusable, shared</span></span><span class="l a">+ <span class="k">iteration:</span>    tighter loops, less friction</span>
+        </div>
+      </div>
+    </article>
+
+    <!-- 04 -->
+    <article class="commit">
+      <div class="gutter"><span class="node"></span></div>
+      <div class="body">
+        <div class="meta"><span class="hash">5e8f2b1</span><span class="tag">phase/04</span><span class="type">release: autonomous agents</span></div>
+        <h2>Autonomous — with humans in the loop.</h2>
+        <p>Today our agents operate autonomously, while humans stay in the loop for critical decisions and oversight. We didn't replace engineers. We built a workflow where <strong>AI and people complement each other</strong>.</p>
+        <div class="diff">
+<span class="l h">$ adlc status</span><span class="l c">  <span class="k">autonomy:</span>       on</span><span class="l c">  <span class="k">human_in_loop:</span>  critical decisions, oversight</span><span class="l c">  <span class="k">relationship:</span>   complementary      <span class="cm"># AI + engineers</span></span>
+        </div>
+        <div class="badges"><span class="badge">structured</span><span class="badge">scalable</span><span class="badge">effective</span></div>
+      </div>
+    </article>
+
+    <!-- 05 -->
+    <article class="commit">
+      <div class="gutter"><span class="node"></span></div>
+      <div class="body">
+        <div class="meta"><span class="hash">e4b7d2a</span><span class="tag">phase/05</span><span class="type">refactor: the developer's role</span></div>
+        <h2>My job changed. I write less &mdash; and review more.</h2>
+        <p>Before agentic development, most of my day as a developer went into <strong>writing code by hand</strong>, ticket by ticket. Today, most of my time goes into <strong>reviewing the plan the AI is about to execute</strong>, and <strong>giving feedback on the result it produces</strong>. The judgment moved up a level: from writing the solution to shaping it, checking it, and deciding whether it's right.</p>
+        <div class="diff">
+<span class="l h">--- a/developer.day     <span class="cm"># before agentic</span></span><span class="l h">+++ b/developer.day     <span class="cm"># after agentic</span></span><span class="l r">- <span class="k">implement:</span>      write the code by hand, ticket by ticket</span><span class="l r">- <span class="k">debug:</span>          trace issues line by line</span><span class="l a">+ <span class="k">review_plan:</span>    read &amp; approve what the AI will execute   <span class="cm"># before it runs</span></span><span class="l a">+ <span class="k">give_feedback:</span>  evaluate the result, correct, iterate      <span class="cm"># after it runs</span></span><span class="l a">+ <span class="k">decide:</span>         architecture, edge cases, "is this right?"</span><span class="l c">  <span class="k">ship:</span>           still my name on the PR</span>
+        </div>
+        <div class="focus">
+          <div class="rowf"><span class="lbl">before</span>
+            <div class="bar"><span class="seg write" style="width:82%">writing code</span><span class="seg review" style="width:18%">review</span></div>
+          </div>
+          <div class="rowf"><span class="lbl">after</span>
+            <div class="bar"><span class="seg review" style="width:44%">reviewing plans</span><span class="seg fb" style="width:40%">feedback on results</span><span class="seg write" style="width:16%">code</span></div>
+          </div>
+          <div class="rowf"><span></span><span class="note">where my time goes &mdash; illustrative, not measured</span></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- MERGE -->
+    <article class="commit merge">
+      <div class="gutter"><span class="node"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></div>
+      <div class="body">
+        <div class="panel">
+          <div class="meta"><span class="hash">0d3a9f7</span><span class="tag">main</span><span class="type">merge: the real achievement</span></div>
+          <h2>The biggest win isn't the technology we built.</h2>
+          <p>Looking back, the real achievement is how much we've <strong>learned</strong> — and how significantly our engineering <strong>mindset has evolved</strong> along the way.</p>
+          <div class="finale">Great job,<br>everyone!</div>
+        </div>
+      </div>
+    </article>
+
+  </main>
+
+  <footer>
+    <span class="dollar">$</span><span class="end">git log --reverse --graph &nbsp;·&nbsp; 6 commits, 1 merge</span><br>
+    <span class="dollar" style="display:inline-block;margin-top:8px">$</span><span class="cursor"></span>
+  </footer>
+</div>
+
+<script>
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var cmdText = 'git log --reverse --graph';
+  var cmdEl = document.getElementById('cmd');
+  if (reduceMotion){ cmdEl.textContent = cmdText; }
+  else {
+    var ci = 0;
+    (function type(){
+      if (ci <= cmdText.length){ cmdEl.textContent = cmdText.slice(0, ci); ci++; setTimeout(type, 42 + Math.random()*55); }
+    })();
+  }
+
+  var commits = Array.prototype.slice.call(document.querySelectorAll('.commit'));
+  if ('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); }
+      });
+    }, { threshold: 0.28, rootMargin: '0px 0px -8% 0px' });
+    commits.forEach(function(c){ io.observe(c); });
+  } else {
+    commits.forEach(function(c){ c.classList.add('in'); });
+  }
+
+  var idx = -1;
+  function jump(dir){
+    idx = Math.max(0, Math.min(commits.length - 1, idx + dir));
+    commits[idx].scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  }
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'j') jump(1);
+    else if (e.key === 'k') jump(-1);
+  });
+</script>
+</body>
+</html>
